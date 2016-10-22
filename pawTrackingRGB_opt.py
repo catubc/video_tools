@@ -119,6 +119,10 @@ def tracking(to_log):
 
         skinMask = cv2.inRange(frame, lower, upper)
 
+
+        cv2.imshow('Test', skinMask)
+        cv2.waitKey(10)
+
 	    # apply a series of erosions and dilations to the mask
 	    # using an rectangular kernel
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
@@ -301,38 +305,52 @@ cv2.namedWindow('ROI', 0) # show mask (ROI)
 cv2.resizeWindow('ROI', 512, 384)
 cv2.setMouseCallback('ROI', click_and_crop)
 
-# open video    
-if not args.get("video", False):
-    camera = cv2.VideoCapture(0)
+## open video    
+#if not args.get("video", False):
+    #camera = cv2.VideoCapture(0)
 
-# otherwise, load the video
-else:
-    camera = cv2.VideoCapture(args["video"])
+## otherwise, load the video
+#else:
+    #camera = cv2.VideoCapture(args["video"])
+
+filename = '/media/cat/12TB/in_vivo/tim/yuki/IA1/video_files/IA1pm_Feb9_30Hz.m4v'
+camera = cv2.VideoCapture(filename)
+
 
 # choose ROI
-choose_roi()
-cv2.setMouseCallback('ROI', disable_click_and_crop)
+#choose_roi()
+refPt.append([100, 250])
+refPt.append([50, 250])
+#click_and_crop
+
+
+#cv2.setMouseCallback('ROI', disable_click_and_crop)
 
 # open more windows
-cv2.namedWindow('images', 0)
-cv2.resizeWindow('images', 1024, 384)
-cv2.createTrackbar('R-low', 'images', 0, 255, trackbar_callback)
-cv2.createTrackbar('R-high', 'images', 0, 255, trackbar_callback)
-cv2.namedWindow('mask', 0)
-cv2.resizeWindow('mask', 512, 384) # show mask (full frame)
-cv2.namedWindow('tracking', 0) # show tracking 
-cv2.resizeWindow('tracking', 1024, 384)
+#cv2.namedWindow('images', 0)
+#cv2.resizeWindow('images', 1024, 384)
+#cv2.createTrackbar('R-low', 'images', 0, 255, trackbar_callback)
+#cv2.createTrackbar('R-high', 'images', 0, 255, trackbar_callback)
+#cv2.namedWindow('mask', 0)
+#cv2.resizeWindow('mask', 512, 384) # show mask (full frame)
+#cv2.namedWindow('tracking', 0) # show tracking 
+#cv2.resizeWindow('tracking', 1024, 384)
 
 # choose threshold on red channel
 tracking(to_log = False)
 
 # perform tracking
-camera.release()
+#camera.release()
 # open video    
-if not args.get("video", False):
-    camera = cv2.VideoCapture(0)
-else:
-    camera = cv2.VideoCapture(args["video"])
+#if not args.get("video", False):
+#    camera = cv2.VideoCapture(0)
+#else:
+#    camera = cv2.VideoCapture(args["video"])
+
+
+
+
+
 
 tracking(to_log = True)
 camera.release()
