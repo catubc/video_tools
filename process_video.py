@@ -48,7 +48,7 @@ if os.path.exists(filename[:-4]+area+'.npy')==False:
         if not grabbed: 
             break
 
-        frame = frame[150:400, 850:1050]
+        frame = frame[150:400, 750:1080]
         
         #Save cropped raw image into .npy array
         image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -100,114 +100,141 @@ else:
     movie_array = np.load(filename[:-4]+area+'_movie.npy')
 
 
-subsampling = True
 subsampled_array = []
-if subsampling: 
-    print "... subsampling ..."
+print "... subsampling ..."
+
+if os.path.exists(filename[:-4]+area+'_subsampled.npy')==False:
     for k in range(len(data_array)):
         subsampled_array.append(scipy.misc.imresize(data_array[k], 0.1, interp='bilinear', mode=None))
 
-
-    #ax = plt.subplot(2,1,1)
-    #plt.imshow(subsampled_array[100])
-    #ax=plt.subplot(2,1,2)
-    #plt.imshow(data_array[100])
-    #plt.show()
-
     data_array = np.array(subsampled_array)
+
+    np.save(filename[:-4]+area+'_subsampled', data_array)
+else:
+    data_array = np.load(filename[:-4]+area+'_subsampled.npy')
+
 
 
 #******************* PCA / DIM REDUCTION *****************
-np.random.seed(5)
-
-X = []
-for k in range(len(data_array)): 
-    X.append(np.ravel(data_array[k]))
-
-plt.cla()
-#pca = decomposition.SparsePCA(n_components=3, n_jobs=1)
-pca = decomposition.PCA(n_components=3)
-
-
-
 if os.path.exists(filename[:-4]+area+'_pca.npy')==False:
+    print "... computing original PCA..."
+    np.random.seed(5)
+
+    X = []
+    for k in range(len(data_array)): 
+        X.append(np.ravel(data_array[k]))
+
+    plt.cla()
+    #pca = decomposition.SparsePCA(n_components=3, n_jobs=1)
+    pca = decomposition.PCA(n_components=3)
+
     print "... fitting PCA ..."
+
     pca.fit(X)
     print "... pca transform..."
     X = pca.transform(X)
-    
     np.save(filename[:-4]+area+'_pca', X)
-
 else:
-    
     X = np.load(filename[:-4]+area+'_pca.npy')
 
 
 #****************** CLUSTERING OF DATA *******************
 
-def KMEANS(data, n_clusters):
+if False: 
+    def KMEANS(data, n_clusters):
 
-    from sklearn import cluster, datasets
-    clusters = cluster.KMeans(n_clusters, max_iter=1000, n_jobs=-1, random_state = 1032)
-    clusters.fit(data)
-    
-    return clusters.labels_
+        from sklearn import cluster, datasets
+        clusters = cluster.KMeans(n_clusters, max_iter=1000, n_jobs=-1, random_state = 1032)
+        clusters.fit(data)
+        
+        return clusters.labels_
 
-n_clusters = 20
-labels = KMEANS(X, n_clusters)
+    n_clusters = 20
+    labels = KMEANS(X, n_clusters)
 
-#Save index location for each chosen cluster
+    #Save index location for each chosen cluster
 
-cluster_indexes = []
-for k in range(n_clusters):
-    cluster_indexes.append([])
+    cluster_indexes = []
+    for k in range(n_clusters):
+        cluster_indexes.append([])
 
-for p in range(len(labels)):
-    cluster_indexes[labels[p]].append(p)
+    for p in range(len(labels)):
+        cluster_indexes[labels[p]].append(p)
+
+
+#plotting_mat = False
+
+#if plotting_mat: 
+
+    #colors = []
+    #for k in range(len(X)):
+        #colors.append(COLORS[labels[k]])
+
+
+    #print "... plotting ..."
+    #fig = plt.figure(1, figsize=(4, 3))
+    #plt.clf()
+    #ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)
+
+    #ax.scatter(X[:, 0], X[:, 1], X[:, 2], c = colors, cmap=plt.cm.spectral)
+
+    #ax.w_xaxis.set_ticklabels([])
+    #ax.w_yaxis.set_ticklabels([])
+    #ax.w_zaxis.set_ticklabels([])
+
+    #plt.show()
 
 
 #****************** PLOT CLUSTERS *******************
-plotting_mat = False
+
 plotting_3D = True
 
-if plotting_mat: 
-
-    colors = []
-    for k in range(len(X)):
-        colors.append(COLORS[labels[k]])
-
-
-    print "... plotting ..."
-    fig = plt.figure(1, figsize=(4, 3))
-    plt.clf()
-    ax = Axes3D(fig, rect=[0, 0, .95, 1], elev=48, azim=134)
-
-    ax.scatter(X[:, 0], X[:, 1], X[:, 2], c = colors, cmap=plt.cm.spectral)
-
-    ax.w_xaxis.set_ticklabels([])
-    ax.w_yaxis.set_ticklabels([])
-    ax.w_zaxis.set_ticklabels([])
-
-    plt.show()
-
-
 if plotting_3D: 
+    ctr= 0
+    loop_condition = True
+    
+    filename ='/media/cat/12TB/in_vivo/tim/yuki/AI3/video_files/AI3_2014-10-28 15-26-09.219.wmv'
+    PCA_locs = np.load(filename[:-4]+area+'_pca.npy') #[:5000]
+    movie_array = np.load(filename[:-4]+area+'_movie.npy')
+    #movie_array = movie_array
+    ctr+=1
 
-    class Window(QtGui.QMainWindow):
+    while loop_condition: 
 
-        def __init__(self, area):
-            super(Window, self).__init__()
-            self.setGeometry(50, 50, 500, 300)
+        #Restart GUI 
+        GUI = Window()
+        GUI.X = PCA_locs 
+        GUI.movie_array = movie_array
 
-            filename ='/media/cat/12TB/in_vivo/tim/yuki/AI3/video_files/AI3_2014-10-28 15-26-09.219.wmv'
-            self.X = np.load(filename[:-4]+area+'_pca.npy')
-            self.movie_array = np.load(filename[:-4]+area+'_movie.npy')
-
-            plot_3D(self)
+        #Show window
+        GUI.view_3D()
+        app.exec_()
         
-    GUI = Window(area)
-    app.exec_()
-    
-    
+        
+        #Continue loop if True
+        loop_condition = GUI.loop_condition
+
+        #Update data arrays
+        print "... picked indexes: ", GUI.saved_indexes
+        print "... len cluster: ", len(GUI.saved_indexes)
+        data_array = np.delete(data_array, GUI.saved_indexes, axis=0)
+        movie_array = np.delete(movie_array, GUI.saved_indexes, axis=0)     #Make sure to udpate the movie arrays also to see correct 
+        
+        #Redo PCA
+        print "... recomputing  PCA..."
+        X = []
+        for k in range(len(data_array)): X.append(np.ravel(data_array[k]))
+
+        plt.cla()
+        pca = decomposition.PCA(n_components=3)
+
+        print "... fitting PCA ..."
+
+        pca.fit(X)
+        print "... pca transform..."
+        PCA_locs = pca.transform(X)
+        #np.save(filename[:-4]+area+'_pca', X)
+
+
 quit()
 

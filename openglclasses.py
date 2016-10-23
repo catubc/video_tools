@@ -113,15 +113,25 @@ CLUSTERCOLOURS.remove(GREY)
 CLUSTERCOLOURSRGB = hex2rgb(CLUSTERCOLOURS)
 GREYRGB = hex2rgb([GREY])[0] # pull it out of the list
 
+#WINDOW CLASS TO START 3D PLOTTING
+class Window(QtGui.QMainWindow):
 
+    def __init__(self):
+        super(Window, self).__init__()
+
+    def view_3D(self):
+        self.saved_indexes = []
+        plot_3D(self)
+    
+#WINDOW SPECIFICALLY FOR CLUSTERING 3D PLOTS *************************THIS MAY NOT BE NECESSARY AS WELL.
 class ClusterWindow(QtGui.QMainWindow):
-    def __init__(self, pos=None, size=None):
+    def __init__(self, parent):
         QtGui.QMainWindow.__init__(self)
         self.setWindowTitle("Distributions")
-        self.move(*pos)
-        self.resize(*size)
-
-        self.glWidget = GLWidget(parent=self)
+        self.move(0,0)
+        self.resize(1000,1000)
+        self.parent = parent
+        self.glWidget = GLWidget(self)
         self.setCentralWidget(self.glWidget)
 
 
@@ -135,23 +145,30 @@ class ClusterWindow(QtGui.QMainWindow):
     def keyReleaseEvent(self, event):
         self.glWidget.keyReleaseEvent(event) # pass it down
 
-    def plot(self, X, sids, nids):
+    #def plot(self, X, sids, nids):
+    def plot(self, X):
         """Plot 3D projection of (possibly clustered) spike params in X"""
         X = tocontig(X) # ensure it's contig
+        self.X = X
+        print "... # points: ", self.X.shape
         gw = self.glWidget
         gw.points = X
         gw.npoints = len(X)
-        gw.sids = sids
-        gw.nids = nids
+        gw.sids = np.arange(len(X))
+        gw.nids = gw.sids % len(CLUSTERCOLOURSRGB)
+
+        #gw.sids = sids
+        #gw.nids = nids
         gw.colour() # set colours
         gw.updateGL()
         
 
 class GLWidget(QtOpenGL.QGLWidget):
-    def __init__(self, parent=None):
+    def __init__(self, parent):
         QtOpenGL.QGLWidget.__init__(self, parent)
         #self.spw = self.parent().spykewindow
         #self.setMouseTracking(True) # req'd for tooltips purely on mouse motion, slow
+        self.parent = parent
         self.lastPressPos = QtCore.QPoint()
         self.lastPos = QtCore.QPoint()
         self.focus = np.float32([0, 0, 0]) # init camera focus
@@ -543,7 +560,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         # grab back buffer:
         #GL.glReadBuffer(GL.GL_BACK) # defaults to back
         # find rgb at or around cursor coords, decode sid:
-        backbuffer = GL.glReadPixels(x=x-pb, y=y-pb, width=2*pb+1, height=2*pb+1,
+        backbuffer = GL.glReadPixels(x=x-pb, y=y-pb, width=2*pb+10, height=2*pb+10,
                                      format=GL.GL_RGB, type=GL.GL_UNSIGNED_BYTE,
                                      array=None, outputType=None)
                                      
@@ -748,8 +765,8 @@ class GLWidget(QtOpenGL.QGLWidget):
                 self.lookUpZAxis()
             else:
                 self.lookDownZAxis()
-        elif key == Qt.Key_X: # make x axis point out
-            self.rotateXOut()
+        #elif key == Qt.Key_X: # make x axis point out
+        #    self.rotateXOut()
         elif key == Qt.Key_Y: # make y axis point right
             self.rotateYRight()
         elif key == Qt.Key_Z: # make z axis point up
@@ -787,17 +804,50 @@ class GLWidget(QtOpenGL.QGLWidget):
         elif key == Qt.Key_C:   # CLEAR array
             print "... cleared points_selected array..."
             self.points_selected = []
-                  
+
+
+        elif key == Qt.Key_E:   # CLEAR point from display array
+            print "... black out points from display ..."
+            print self.points_pyramids.shape, self.colours_pyramids.shape
+            for pts in self.points_selected[::-1]:
+                indexes = np.int32(np.arange(pts*12, pts*12+12, 1))
+                self.colours_pyramids[indexes] = [0, 0, 0]
+                            
+            
+        elif key == Qt.Key_R:   # Remove points in points_selected buffer from data and recompute PCA
+            print "... remove cluster and recalculate PCA ..."
+            print self.points_pyramids.shape, self.colours_pyramids.shape
+            
+            self.parent.parent.saved_indexes = np.int32(self.points_selected)
+            self.parent.parent.loop_condition = True
+            self.parent.close()
+            
+            #for pts in self.points_selected[::-1]:
+                #indexes = np.int32(np.arange(pts*12, pts*12+12, 1))
+                #for index in indexes[::-1]:
+                    #self.points_pyramids = np.delete(self.points_pyramids, index, axis=0)
+                    #self.colours_pyramids = np.delete(self.colours_pyramids, index, axis=0)
+ 
+            #print self.points_pyramids.shape, self.colours_pyramids.shape
+            #self.parent.X = np.delete(self.parent.X, indexes, axis=0)
+            
+            
+            #self.parent.plot(self.parent.X) 
+            
+            
+        elif key == Qt.Key_X:   # Remove points in points_selected buffer from data and recompute PCA
+            self.parent.parent.loop_condition = False
+            quit()
+            
+            
         elif key == Qt.Key_S:   #Plot frames from the data:
             print "... plotting movie frames ..."
             
             temp_points = np.int32(np.random.choice(self.points_selected, min(len(self.points_selected), 100)))
 
-            #dim = int(np.sqrt(len(self.points_selected)))+1
             dim = 10
             gs = gridspec.GridSpec(dim,dim)
             
-
             #Plot individual frames
             for d in range(len(temp_points)): 
                 ax = plt.subplot(gs[int(d/dim), d%dim])
@@ -806,10 +856,6 @@ class GLWidget(QtOpenGL.QGLWidget):
                 ax.get_xaxis().set_visible(False); ax.get_yaxis().set_visible(False)
                 
             plt.show()
-
-
-            
-
 
         self.updateGL()
 
@@ -889,28 +935,24 @@ class GLWidget(QtOpenGL.QGLWidget):
 def plot_3D(self):
 
     #main_widget = self.parent
-    
-    #Load saved dim_red data
-    #temp_file = self.parent.root_dir+self.selected_animal+"/tif_files/"+self.selected_recording+'.npy'
-    #filename = temp_file[:-4]+'_'+self.selected_filter+'_'+self.parent.filter_low.text()+'hz_'+self.parent.filter_high.text()+'hz_'+ self.selected_dim_red+'_'+self.starting_frame.text()+"start_"+self.number_frame.text()+"frames.npy"
-
-    #print filename
 
     #data = np.load(filename)
     #data=data*float(self.scaling_factor.text())
     print self.X.shape
 
     #Start window
-    self.glwindow = ClusterWindow(pos=(0, 0), size=(1000, 1000))
+    self.glwindow = ClusterWindow(self)
+    self.saved_indexes
     self.glwindow.show()
     self.glwindow.glWidget.points_selected=[]    #Empty list to gather all selected points.
     self.glwindow.glWidget.movie_array = self.movie_array 
-    
+
+
     #Load data as points
     X = self.X*1E-1
     X = np.float32(X)
-    sids = np.arange(len(X))
-    nids = sids % len(CLUSTERCOLOURSRGB)
+
+
     #print CLUSTERCOLOURSRGB
 
     #Load data as points
@@ -923,15 +965,16 @@ def plot_3D(self):
     self.glwindow.glWidget.points_pyramids = []
     self.glwindow.glWidget.colours_pyramids = []
     self.glwindow.glWidget.points_pyramids, self.glwindow.glWidget.colours_pyramids = points_to_triangles(X)
-    
+
+
     #Load data as lines
     self.glwindow.glWidget.points_lines = []
     self.glwindow.glWidget.colours_lines = []   
     #glwindow.glWidget.points_selected= []
     #glwindow.glWidget.points_lines, glwindow.glWidget.colours_lines = points_to_lines(data)
-    
-    self.glwindow.plot(X, sids, nids)
-    
+
+    self.glwindow.plot(X)
+
     #return self.glwindow.glWidget.points_selected
 
     
