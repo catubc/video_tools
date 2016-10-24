@@ -535,7 +535,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         MV[3, :2] = x, y # set first two entries of 4th row to x, y
         self.MV = MV
 
-    def pick(self, x, y, pb=10, multiple=False):
+    def pick(self, x, y, pb=50, multiple=False):
         """Return sid of point at window coords x, y (bottom left origin),
         or first or multiple sids that fall within a square 2*pb+1 pix on a side,
         centered on x, y. pb is the pixel border to include around x, y"""
@@ -560,7 +560,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         # grab back buffer:
         #GL.glReadBuffer(GL.GL_BACK) # defaults to back
         # find rgb at or around cursor coords, decode sid:
-        backbuffer = GL.glReadPixels(x=x-pb, y=y-pb, width=2*pb+10, height=2*pb+10,
+        backbuffer = GL.glReadPixels(x=x-pb, y=y-pb, width=2*pb+50, height=2*pb+50,
                                      format=GL.GL_RGB, type=GL.GL_UNSIGNED_BYTE,
                                      array=None, outputType=None)
                                      
@@ -741,15 +741,15 @@ class GLWidget(QtOpenGL.QGLWidget):
             if sid != None:
                 self.focus = self.points[self.sids.searchsorted(sid)]
                 self.panTo() # pan to new focus
-        elif key == Qt.Key_A and ctrl: # cycle through xyz axes display, A on its own plots
-            if self.axes == False:
-                self.axes = 'both'
-            elif self.axes == 'both':
-                self.axes = 'mini'
-            elif self.axes == 'mini':
-                self.axes = 'focal'
-            elif self.axes == 'focal':
-                self.axes = False
+        #elif key == Qt.Key_A and ctrl: # cycle through xyz axes display, A on its own plots
+            #if self.axes == False:
+                #self.axes = 'both'
+            #elif self.axes == 'both':
+                #self.axes = 'mini'
+            #elif self.axes == 'mini':
+                #self.axes = 'focal'
+            #elif self.axes == 'focal':
+                #self.axes = False
         elif key == Qt.Key_1: # look along x axis
             if ctrl:
                 self.lookUpXAxis()
@@ -822,36 +822,31 @@ class GLWidget(QtOpenGL.QGLWidget):
             self.parent.parent.loop_condition = True
             self.parent.close()
             
-            #for pts in self.points_selected[::-1]:
-                #indexes = np.int32(np.arange(pts*12, pts*12+12, 1))
-                #for index in indexes[::-1]:
-                    #self.points_pyramids = np.delete(self.points_pyramids, index, axis=0)
-                    #self.colours_pyramids = np.delete(self.colours_pyramids, index, axis=0)
- 
-            #print self.points_pyramids.shape, self.colours_pyramids.shape
-            #self.parent.X = np.delete(self.parent.X, indexes, axis=0)
+        elif key == Qt.Key_A:   # Remove points in points_selected buffer from data and recompute PCA
+            print "... exit and replot ..."
+            print self.points_pyramids.shape, self.colours_pyramids.shape
             
-            
-            #self.parent.plot(self.parent.X) 
-            
+            self.parent.parent.saved_indexes = []
+            self.parent.parent.loop_condition = True
+            self.parent.close()
             
         elif key == Qt.Key_X:   # Remove points in points_selected buffer from data and recompute PCA
             self.parent.parent.loop_condition = False
-            quit()
+            self.parent.close()
             
             
         elif key == Qt.Key_S:   #Plot frames from the data:
             print "... plotting movie frames ..."
             
-            temp_points = np.int32(np.random.choice(self.points_selected, min(len(self.points_selected), 100)))
+            dim = 5
+            temp_points = np.int32(np.random.choice(self.points_selected, min(len(self.points_selected), dim*dim )))
 
-            dim = 10
             gs = gridspec.GridSpec(dim,dim)
             
             #Plot individual frames
             for d in range(len(temp_points)): 
                 ax = plt.subplot(gs[int(d/dim), d%dim])
-                plt.imshow(self.movie_array[temp_points[d]])
+                plt.imshow(self.movie_array[temp_points[d]], cmap='Greys_r')
                 
                 ax.get_xaxis().set_visible(False); ax.get_yaxis().set_visible(False)
                 
@@ -932,6 +927,8 @@ class GLWidget(QtOpenGL.QGLWidget):
             exec(txt) # update self.MV and self.focus, with hopefully no maliciousness
 
 
+
+
 def plot_3D(self):
 
     #main_widget = self.parent
@@ -977,7 +974,6 @@ def plot_3D(self):
 
     #return self.glwindow.glWidget.points_selected
 
-    
    
 def points_to_triangles(data):
     
@@ -1068,3 +1064,9 @@ def points_to_triangles(data):
     return points, colours
     
 
+
+    
+    
+    
+    
+    
