@@ -42,6 +42,12 @@ while ctr<200:
 image_original = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 image_original_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 
+#data_norm = ((image_original_gray-np.min(image_original_gray))/(np.max(image_original_gray)-np.min(image_original_gray))*255).astype(np.uint8)      #Normalize data to gray scale 0..255
+#img_arctan = np.ma.arctanh((image_original_gray-128.)/128.)
+#plt.imshow(img_arctan)
+#plt.show()
+
+
 for area in areas:
     if os.path.exists(filename[:-4]+area+'_crop.npy'): continue
 
@@ -56,7 +62,7 @@ for area in areas:
 #************************************************************************************************
 #************************************* LOAD CROPPED IMAGE STACK *********************************
 #************************************************************************************************
-areas = ['_lick'] 
+areas = ['_lever'] 
 
 for area in areas: 
     if os.path.exists(filename[:-4]+area+'_2D.npy')==False:
@@ -108,7 +114,7 @@ for area in areas:
                 frame_count+=1
                 continue
 
-            original_movie_array.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            #original_movie_array.append(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
             
 
             frame = frame[crop_box[0][0]:crop_box[0][1], crop_box[1][0]:crop_box[1][1]]
@@ -138,8 +144,8 @@ for area in areas:
             # intensities to be considered 'skin'
             
             #I don't understand this anymore                    
-            rLow = 100 #cv2.getTrackbarPos('R-low', 'images')
-            rHigh = 255 #cv2.getTrackbarPos('R-high', 'images')
+            rLow = 0 #cv2.getTrackbarPos('R-low', 'images')
+            rHigh = 100 #cv2.getTrackbarPos('R-high', 'images')
             lower = np.array([rLow, rLow, rLow], dtype = "uint8")
             upper = np.array([rHigh, rHigh, rHigh], dtype = "uint8")     
 
@@ -151,7 +157,7 @@ for area in areas:
            
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
             skinMask = cv2.erode(skinMask, kernel, iterations = 1)
-            skinMask = cv2.dilate(skinMask, kernel, iterations = 1)
+            skinMask = cv2.dilate(skinMask, kernel, iterations = 2)
 
             # blur the mask to help remove noise, then apply the
             # mask to the frame
@@ -176,7 +182,7 @@ for area in areas:
         if os.path.exists(filename[:-4]+area+'_movie.npy')==False:
             np.save(filename[:-4]+area+'_movie', movie_array)
         
-        np.save(filename[:-4]+'_movie', original_movie_array)
+        #np.save(filename[:-4]+'_movie', original_movie_array)
         
         data_2D_array = np.array(data_2D_array)
     else:
@@ -218,6 +224,7 @@ for k in range(len(data_2D_array)):
 X = dimension_reduction(X, method, filename, area)
 
 
+X = plot_PCA(X, filtering=True)
 
 #****************** PLOT CLUSTERS *******************
 
@@ -228,21 +235,22 @@ if plotting_3D:
     
     #Load original movies and increase boundaries 
     crop_box = np.load(filename[:-4]+area+'_crop.npy')
-    enlarge = 100
+    enlarge = 10
     for k in range(2): 
         crop_box[k][0] = max(0,crop_box[k][0]-enlarge); crop_box[k][1] = min(crop_box[k][1]+enlarge, image_original_gray.shape[k])
     movie_array = np.load(filename[:-4]+'_movie.npy', mmap_mode='r+')[:, crop_box[0][0]:crop_box[0][1], crop_box[1][0]:crop_box[1][1]]
     #movie_array = np.load(filename[:-4]+area+'_movie.npy', mmap_mode='r+')
     
     #Load PCA locations;
-    xyz_locs = np.load(filename[:-4]+area+'_'+method+'.npy') #*1E4
+    #xyz_locs = np.load(filename[:-4]+area+'_'+method+'.npy') #*1E4
+    X = X*2
     
     cumulative_indexes = []
     while loop_condition: 
 
         #Start/Restart GUI 
         GUI = Window()
-        GUI.X = xyz_locs 
+        GUI.X = X 
         GUI.movie_array = movie_array
 
         #Show window
@@ -280,7 +288,10 @@ if plotting_3D:
         pca.fit(X)
 
         print "... pca transform..."
-        xyz_locs = pca.transform(X)
+        X = pca.transform(X)
+
+        X = plot_PCA(X, filtering=False)
+
         #np.save(filename[:-4]+area+'_pca', X)
 
 
@@ -295,39 +306,65 @@ for k in range(len(cumulative_indexes)):
 
 #Load original movies and increase boundaries 
 crop_box = np.load(filename[:-4]+area+'_crop.npy')
-enlarge = 100
+enlarge = 10
 for k in range(2): 
     crop_box[k][0] = max(0,crop_box[k][0]-enlarge); crop_box[k][1] = min(crop_box[k][1]+enlarge, image_original_gray.shape[k])
 movie_array = np.load(filename[:-4]+'_movie.npy', mmap_mode='r+')[:, crop_box[0][0]:crop_box[0][1], crop_box[1][0]:crop_box[1][1]]
    
-
-#Plot examples from each cluster
-dim = 5
-frame_indexes = np.arange(len(movie_array))     #Make original indexes and remove them as they are removed from the datasets 
+#Compute membership in each cluster and acquire examples:
 cluster_ids = []
-cluster_names = []
+dim=6
+frame_indexes = np.arange(len(movie_array))     #Make original indexes and remove them as they are removed from the datasets 
 for k in range(len(cumulative_indexes)):
     img_indexes = np.int32(np.random.choice(cumulative_indexes[k], min(len(cumulative_indexes[k]), dim*dim)))
-
-    gs = gridspec.GridSpec(dim,dim)
+        
     #Plot individual frames
+    gs = gridspec.GridSpec(dim,dim)
     for d in range(len(img_indexes)): 
         ax = plt.subplot(gs[int(d/dim), d%dim])
-        plt.imshow(movie_array[frame_indexes[img_indexes[d]]], cmap='Greys_r')
-        ax.get_xaxis().set_visible(False); ax.get_yaxis().set_visible(False)
+        #temp_img = np.ma.arctanh((movie_array[img_indexes[d]]-128.)/128.)
+        plt.imshow(movie_array[img_indexes[d]])#, cmap='Greys_r')
+        ax.set_xticks([]); ax.set_yticks([])
         
     plt.suptitle("Cluster: " + str(k+1) + "/" + str(len(cumulative_indexes)), fontsize = 20)
-    plt.show()
+    plt.tight_layout()  
+    
+    plt.savefig(filename[:-4]+'_'+area+'_cluster_'+str(k))   # save the figure to file
+    plt.close() 
 
 
     #Save cluster ids
     correct_frame_indexes = frame_indexes[cumulative_indexes[k]]
     cluster_ids.append(correct_frame_indexes)
 
-    cluster_names.append(raw_input("Cluster name: "))
-    
     #Update frame_indexes by deleting cumulative_indexes
     frame_indexes = np.delete(frame_indexes, cumulative_indexes[k])   
+    
+    print len(cluster_ids[k])
+
+#Plot examples from each cluster and prompt user for naming
+cluster_names = []
+dim=2
+for p in range(len(cumulative_indexes)):
+    gs = gridspec.GridSpec(dim,dim)
+    img_indexes = np.int32(np.random.choice(cluster_ids[k], min(len(cluster_ids[k]), dim*dim)))
+
+    #Plot individual frames
+    gs = gridspec.GridSpec(dim,dim)
+    for d in range(len(img_indexes)): 
+        ax = plt.subplot(gs[int(d/dim), d%dim])
+        #temp_img = np.ma.arctanh((movie_array[img_indexes[d]]-128.)/128.)
+        plt.imshow(movie_array[img_indexes[d]])#, cmap='Greys_r')
+        ax.set_xticks([]); ax.set_yticks([])
+        
+    plt.suptitle("Cluster: " + str(p+1) + "/" + str(len(cumulative_indexes)), fontsize = 20)
+    plt.show()
+
+    #Save cluster ids
+    #correct_frame_indexes = frame_indexes[cumulative_indexes[p]]
+    #cluster_ids.append(correct_frame_indexes)
+
+    cluster_names.append(raw_input("Cluster name: "))
 
 
 for k in range(len(cluster_ids)):

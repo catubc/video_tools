@@ -228,6 +228,42 @@ def PCA_reduction(X, n_components):
         
     
     
-    
+def plot_PCA(X, filtering): 
+    from scipy import signal
+
+    #filtering = False
+    #Filter PCA DATA
+    t = np.linspace(0,len(X[:,0]), len(X[:,0]))/15.
+    ax = plt.subplot(3,1,1)
+    print len(t), len(X[:,0])
+    plt.plot(t, X[:,0])
+    plt.title("PCA #1", fontsize = 30)
+
+    x = np.hstack(X[:,0])
+    b, a = signal.butter(2, 0.001, 'high')
+    y = signal.filtfilt(b, a, x)
+    if filtering: X[:,0]=y
+    plt.plot(t, y, color='red')
+
+    ax = plt.subplot(3,1,2)
+    plt.plot(t, X[:,1])
+    plt.title("PCA #2", fontsize = 30)
+    x = np.hstack(X[:,1])
+    #b, a = signal.butter(4, 0.1, 'high')
+    y = signal.filtfilt(b, a, x)
+    plt.plot(t, y, color='red')
+    #if filtering: X[:,1]=y
+
+    ax = plt.subplot(3,1,3)
+    plt.plot(t, X[:,2])
+    plt.title("PCA #3", fontsize = 30)
+    x = np.hstack(X[:,2])
+    #b, a = signal.butter(4, 0.1, 'high')
+    y = signal.filtfilt(b, a, x)
+    plt.plot(t, y, color='red')
+    #if filtering: X[:,2]=y
+    #plt.show()
+    plt.close()
+    return X 
     
     

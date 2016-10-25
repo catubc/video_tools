@@ -769,8 +769,8 @@ class GLWidget(QtOpenGL.QGLWidget):
         #    self.rotateXOut()
         elif key == Qt.Key_Y: # make y axis point right
             self.rotateYRight()
-        elif key == Qt.Key_Z: # make z axis point up
-            self.rotateZUp()
+        #elif key == Qt.Key_Z: # make z axis point up
+        #    self.rotateZUp()
         #elif key == Qt.Key_S:
             #if event.isAutoRepeat():
                 #return # event.ignore()?
@@ -821,6 +821,15 @@ class GLWidget(QtOpenGL.QGLWidget):
             self.parent.parent.saved_indexes = np.int32(self.points_selected)
             self.parent.parent.loop_condition = True
             self.parent.close()
+            
+        elif key == Qt.Key_Z:   # Remove points in points_selected buffer from data and recompute PCA
+            print "... Isolate cluster and recompute PCA ..."
+            print self.npoints
+            all_pts = np.arange(self.npoints)
+            self.parent.parent.saved_indexes = np.int32(np.delete(all_pts, self.points_selected))
+            self.parent.parent.loop_condition = True
+            self.parent.close()
+            
             
         elif key == Qt.Key_A:   # Remove points in points_selected buffer from data and recompute PCA
             print "... exit and replot ..."
