@@ -561,6 +561,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         #GL.glReadBuffer(GL.GL_BACK) # defaults to back
         # find rgb at or around cursor coords, decode sid:
         backbuffer = GL.glReadPixels(x=x-pb, y=y-pb, width=2*pb+50, height=2*pb+50,
+        #backbuffer = GL.glReadPixels(x=x-pb, y=y-pb, width=2*pb+150, height=2*pb+150,
                                      format=GL.GL_RGB, type=GL.GL_UNSIGNED_BYTE,
                                      array=None, outputType=None)
                                      
@@ -822,7 +823,8 @@ class GLWidget(QtOpenGL.QGLWidget):
             self.parent.parent.loop_condition = True
             self.parent.close()
             
-        elif key == Qt.Key_Z:   # Remove points in points_selected buffer from data and recompute PCA
+            
+        elif key == Qt.Key_Z:   # Do PCA on isolated cluster
             print "... Isolate cluster and recompute PCA ..."
             print self.npoints
             all_pts = np.arange(self.npoints)
@@ -831,13 +833,14 @@ class GLWidget(QtOpenGL.QGLWidget):
             self.parent.close()
             
             
-        elif key == Qt.Key_A:   # Remove points in points_selected buffer from data and recompute PCA
+        elif key == Qt.Key_A:   # Remove points recompute PCA; Does not save data?!
             print "... exit and replot ..."
             print self.points_pyramids.shape, self.colours_pyramids.shape
             
             self.parent.parent.saved_indexes = []
             self.parent.parent.loop_condition = True
             self.parent.close()
+            
             
         elif key == Qt.Key_X:   # Remove points in points_selected buffer from data and recompute PCA
             self.parent.parent.loop_condition = False
