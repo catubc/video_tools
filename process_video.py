@@ -25,143 +25,13 @@ from video_utils import *
 
 app = QtGui.QApplication(sys.argv)      #***************************** NEED TO CALL THIS AT THE TOP OR OPENGL FUNCTIONS WON"T WORK!!!
 
-def cluster_data(cluster_data, cluster_method):
-    
-    colours = ['blue','red','green','black','orange','magenta','cyan','yellow','brown','pink','blue','red','green','black','orange','magenta','cyan','yellow','brown','pink','blue','red','green','black','orange','magenta','cyan','yellow','brown','pink']
-    
-    #cluster_method=2
-    
-    #KMEANS
-    if cluster_method == 0: 
-        n_clusters = 4
-        clusters = cluster.KMeans(n_clusters, max_iter=1000, n_jobs=-1, random_state=1032)
-        clusters.fit(cluster_data)
-
-        labels = clusters.labels_
-
-    #MEAN SHIFT
-    if cluster_method == 1: 
-        from sklearn.cluster import MeanShift, estimate_bandwidth
-        from sklearn.datasets.samples_generator import make_blobs
-        
-        quantile = 0.1
-        bandwidth = estimate_bandwidth(cluster_data, quantile=quantile, n_samples=5000)
-
-        ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
-        ms.fit(cluster_data)
-        labels = ms.labels_
-        #print labels
-
-    #DBSCAN
-    if cluster_method == 2: 
-        from sklearn.cluster import DBSCAN
-        from sklearn import metrics
-        from sklearn.datasets.samples_generator import make_blobs
-        from sklearn.preprocessing import StandardScaler 
-
-        X = StandardScaler().fit_transform(cluster_data)
-
-        eps = 0.2
-        
-        db = DBSCAN(eps=eps, min_samples=10).fit(X)
-        core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
-        core_samples_mask[db.core_sample_indices_] = True
-        labels = db.labels_ 
-
-    #MANUAL
-    if cluster_method == 3: 
-        manual_cluster(cluster_data)
-        
-        
-    labels = np.array(labels)
-    clrs = []
-    for k in range(len(labels)):
-        clrs.append(colours[labels[k]])
-    plt.scatter(cluster_data[:,0], cluster_data[:,1], color=clrs)
-    plt.show()
-        
-#***************************************************************************************
-def manual_cluster(data):
-
-    global coords, data_temp, ax, fig, cid
-    
-    data_temp = data
-    
-    fig, ax = plt.subplots()
-    
-    coords=[]
-    #ax.imshow(images_processed)#, vmin=0.0, vmax=0.02)
-    ax.scatter(data[:,0],data[:,1])
-    ax.set_title("Compute generic (outside the brain) mask")
-    #figManager = plt.get_current_fig_manager()
-    #figManager.window.showMaximized()
-    cid = fig.canvas.mpl_connect('button_press_event', on_click_single_frame)
-    plt.show()
-
-    return
-
-    #******* MASK AND DISPLAY AREAS OUTSIDE GENERAL MASK 
-    #Search points outside and black them out:
-    all_points = []
-    for i in range(len(images_processed)):
-        for j in range(len(images_processed)):
-            all_points.append([i,j])
-
-    all_points = np.array(all_points)
-    vertixes = np.array(coords) 
-    vertixes_path = Path(vertixes)
-    
-    mask = vertixes_path.contains_points(all_points)
-    counter=0
-    coords_save=[]
-    for i in range(len(images_processed)):
-        for j in range(len(images_processed)):
-            if mask[counter] == False:
-                images_processed[i][j]=0
-                coords_save.append([i,j])
-            counter+=1
-
-    fig, ax = plt.subplots()
-    ax.imshow(images_processed)
-    plt.show()
-   
-    genericmask_file = animal.home_dir+animal.name + '/genericmask.txt'
-    np.savetxt(genericmask_file, coords_save)
-
-    print "Finished Making General Mask"
-
-
-#*************************************************************
-def on_click_single_frame(event):
-    global coords, data_temp, ax, fig, cid
-    
-    #n_pix = len(images_temp)
-    
-    print event.inaxes
-    
-    if event.inaxes is not None:
-        coords.append([event.ydata, event.xdata])
-        #for j in range(len(coords)):
-        #    for k in range(3):
-        #        for l in range(3):
-        #            images_temp[min(n_pix,int(coords[j][0])-1+k)][min(n_pix,int(coords[j][1])-1+l)]=0
-
-        #ax.imshow(images_temp)
-        print coords
-        ax.scatter(data_temp[:,0],data_temp[:,1])
-        ax.scatter(coords[0][0], coords[0][1], color='red', s=50)
-        fig.canvas.draw()
-    else:
-        print 'Exiting'
-        plt.close()
-        fig.canvas.mpl_disconnect(cid)
 
 #****************************************************************************************
 #filename = '/media/cat/12TB/in_vivo/tim/yuki/IA1/video_files/IA1pm_Feb9_30Hz.m4v'
 #filename ='/media/cat/12TB/in_vivo/tim/yuki/AI3/video_files/AI3_2014-10-28 15-26-09.219.wmv'
-#filename = '/media/cat/12TB/in_vivo/tim/yuki/IA1/video_files/IA1am_May10_Week5_30Hz.m4v'
+filename = '/media/cat/12TB/in_vivo/tim/yuki/IA1/video_files/IA1am_May10_Week5_30Hz.m4v'
 
-filename = '/media/cat/All.Data.3TB/in_vivo/tim/yuki/IA2/video_files/IA2pm_Apr21_Week2_30Hz.m4v'
+#filename = '/media/cat/All.Data.3TB/in_vivo/tim/yuki/IA2/video_files/IA2pm_Apr21_Week2_30Hz.m4v'
 
 areas = ['_lever', '_pawlever', '_lick', '_snout', '_rightpaw', '_leftpaw', '_grooming'] 
 
@@ -177,8 +47,10 @@ ctr = 0
 while ctr<200: 
     (grabbed, frame) = camera.read()
     ctr+=1
+
 image_original = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 image_original_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+
 
 #data_norm = ((image_original_gray-np.min(image_original_gray))/(np.max(image_original_gray)-np.min(image_original_gray))*255).astype(np.uint8)      #Normalize data to gray scale 0..255
 #img_arctan = np.ma.arctanh((image_original_gray-128.)/128.)
@@ -373,13 +245,14 @@ X = dimension_reduction(X, method, filename, area)
 #****************** FILTER OUT SLOW COMPONENTS OUT OF DATA *******************
 
 if True: 
-    X = plot_PCA(X, filtering=True)
+    X = filter_PCA(X, filtering=True, plotting=True)
 
 
-#****************** PLOT DISTRIBUTIONS - CLUSTER THEM *******************
+#****************** PLOT DISTRIBUTIONS - 2D & CLUSTER THEM *******************
 
-cluster_method = 3
-cluster_data(X, cluster_method)
+if False: 
+    cluster_method = 3
+    cluster_data(X, cluster_method)
 
 
 
@@ -394,13 +267,13 @@ if plotting_3D:
     crop_box = np.load(filename[:-4]+area+'_crop.npy')
     enlarge = 25
     for k in range(2): 
-        crop_box[k][0] = max(0,crop_box[k][0]-enlarge); crop_box[k][1] = min(crop_box[k][1]+enlarge, image_original_gray.shape[k])
+        crop_box[k][0] = max(0,crop_box[k][0]-enlarge); crop_box[k][1] = min(crop_box[k][1]+enlarge, image_original.shape[k])
     movie_array = np.load(filename[:-4]+'_movie.npy', mmap_mode='r+')[:, crop_box[0][0]:crop_box[0][1], crop_box[1][0]:crop_box[1][1]]
     #movie_array = np.load(filename[:-4]+area+'_movie.npy', mmap_mode='r+')
     
     #Load PCA locations;
     #xyz_locs = np.load(filename[:-4]+area+'_'+method+'.npy') #*1E4
-    X = X*3     #******************3D PLOT SCALING
+    X = X*5     #******************3D PLOT SCALING
     
     cumulative_indexes = []
     while loop_condition: 
@@ -412,44 +285,47 @@ if plotting_3D:
 
         #Show window
         GUI.view_3D()
-        app.exec_()
+        app.exec_()                 #OPENGL Loops exit on certain conditions.
                 
         #Continue loop if True
         loop_condition = GUI.loop_condition
 
 
         if loop_condition == False: 
-            cumulative_indexes.append(np.arange(len(data_array)))  #SAVE REMAINING FRAMES AT END - MAKE SURE THIS IS CORRECT...
+            cumulative_indexes.append(np.arange(len(X)))  #SAVE REMAINING FRAMES AT END - MAKE SURE THIS IS CORRECT...
             break
+
         
         #Update data arrays
         #print "... picked indexes: ", GUI.saved_indexes
         print "... len cluster: ", len(GUI.saved_indexes)
+        print GUI.saved_indexes
         cumulative_indexes.append(np.sort(GUI.saved_indexes))
         
         print "... len cumulative_indexes: ", len(cumulative_indexes)
-        data_array = np.delete(data_array, GUI.saved_indexes, axis=0)
-        movie_array = np.delete(movie_array, GUI.saved_indexes, axis=0)     #Make sure to udpate the movie arrays also to see correct 
+        #data_array = np.delete(data_array, GUI.saved_indexes, axis=0)
+        X = np.delete(X, GUI.saved_indexes, axis=0)
+        movie_array = np.delete(movie_array, GUI.saved_indexes, axis=0)     #Make sure to udpate the movie arrays also to see correct frames
         
         #Redo PCA
         print "... recomputing  dim reduction..."
-        X = []
-        for k in range(len(data_array)): X.append(np.ravel(data_array[k]))
-
+        X_temp = []
+        for k in range(len(X)): 
+            X_temp.append(np.ravel(X[k]))
+        
         #Call PCA FUNCTION HERE....Check for existence outside? 
         plt.cla()
         pca = decomposition.PCA(n_components=3)
 
         print "... fitting PCA ..."
-        pca.fit(X)
+        pca.fit(X_temp)
 
         print "... pca transform..."
-        X = pca.transform(X)
+        X = pca.transform(X_temp)
 
-        X = plot_PCA(X, filtering=False)
+        #X = filter_PCA(X, filtering=False, plotting=False)
 
         #np.save(filename[:-4]+area+'_pca', X)
-
 
 
 
@@ -464,7 +340,7 @@ for k in range(len(cumulative_indexes)):
 crop_box = np.load(filename[:-4]+area+'_crop.npy')
 enlarge = 10
 for k in range(2): 
-    crop_box[k][0] = max(0,crop_box[k][0]-enlarge); crop_box[k][1] = min(crop_box[k][1]+enlarge, image_original_gray.shape[k])
+    crop_box[k][0] = max(0,crop_box[k][0]-enlarge); crop_box[k][1] = min(crop_box[k][1]+enlarge, image_original.shape[k])
 movie_array = np.load(filename[:-4]+'_movie.npy', mmap_mode='c')[:, crop_box[0][0]:crop_box[0][1], crop_box[1][0]:crop_box[1][1]]
    
 #Compute membership in each cluster and save examples to file:
@@ -490,21 +366,24 @@ for k in range(len(cumulative_indexes)):
 
 
     #Save cluster ids
-    print "... frame_indexes: ", frame_indexes[:30]
-    print "...cmulative_indexes: ", cumulative_indexes[k][:30]
+    print "... frame_indexes: ", frame_indexes[:10], frame_indexes[-10:]
+    print "...cmulative_indexes: ", cumulative_indexes[k][:10], cumulative_indexes[k][-10:]
     correct_frame_indexes = frame_indexes[cumulative_indexes[k]]
-    print "...correct_frame_indexes: ", correct_frame_indexes[:30]
+    print "...correct_frame_indexes: ", correct_frame_indexes[:10], correct_frame_indexes[-10:]
     cluster_ids.append(correct_frame_indexes)
 
     #Update frame_indexes by deleting cumulative_indexes
     frame_indexes = np.delete(frame_indexes, cumulative_indexes[k])   
     
-    print len(cluster_ids[k])
+    print "...len cumulative indexes: ", len(cluster_ids[k])
+    print "...len frame_indexes: ", len(frame_indexes)
 
 #Plot examples from each cluster and prompt user for naming
 cluster_names = []
 dim=6
-for p in range(len(cumulative_indexes)):
+frame_indexes = np.arange(len(movie_array))     #Make original indexes and remove them as they are removed from the datasets 
+
+for k in range(len(cumulative_indexes)):
     gs = gridspec.GridSpec(dim,dim)
     img_indexes = np.int32(np.random.choice(cluster_ids[k], min(len(cluster_ids[k]), dim*dim)))
 
@@ -516,7 +395,7 @@ for p in range(len(cumulative_indexes)):
         plt.imshow(movie_array[img_indexes[d]])#, cmap='Greys_r')
         ax.set_xticks([]); ax.set_yticks([])
         
-    plt.suptitle("Cluster: " + str(p+1) + "/" + str(len(cumulative_indexes)), fontsize = 20)
+    plt.suptitle("Cluster: " + str(k+1) + "/" + str(len(cumulative_indexes)), fontsize = 20)
     plt.show()
 
     #Save cluster ids

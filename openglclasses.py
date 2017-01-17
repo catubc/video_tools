@@ -205,18 +205,19 @@ class GLWidget(QtOpenGL.QGLWidget):
     def colour(self, sids=None, sat=1):
         """Set colours of points corresponding to sids according to their nids, with
         saturation level sat. Caller is responsible for calling self.updateGL()"""
-        if sids == None: # init/overwrite self.colours
-            nids = self.nids
-            # uint8, single unit nids are 1-based:
-            self.colours = CLUSTERCOLOURSRGB[nids % len(CLUSTERCOLOURSRGB) - 1] * sat
-            # overwrite unclustered/multiunit points with GREYRGB
-            self.colours[nids < 1] = GREYRGB * sat
-        else: # assume self.colours exists
-            sidis = self.sids.searchsorted(sids)
-            nids = self.nids[sidis]
-            self.colours[sidis] = CLUSTERCOLOURSRGB[nids % len(CLUSTERCOLOURSRGB) - 1] * sat
-            self.colours[sidis[nids < 1]] = GREYRGB * sat
+        nids = self.nids
+        # uint8, single unit nids are 1-based:
+        self.colours = CLUSTERCOLOURSRGB[nids % len(CLUSTERCOLOURSRGB) - 1] * sat
+        # overwrite unclustered/multiunit points with GREYRGB
+        self.colours[nids < 1] = GREYRGB * sat
 
+
+    def colour_set(self, sids, sat=1):
+        sidis = self.sids.searchsorted(sids)
+        nids = self.nids[sidis]
+        self.colours[sidis] = CLUSTERCOLOURSRGB[nids % len(CLUSTERCOLOURSRGB) - 1] * sat
+        self.colours[sidis[nids < 1]] = GREYRGB * sat
+            
     def initializeGL(self):
         # these are the defaults anyway, but just to be thorough:
         GL.glClearColor(0.0, 0.0, 0.0, 1.0) #BLACK BACKGROUND
@@ -806,6 +807,13 @@ class GLWidget(QtOpenGL.QGLWidget):
             print "... cleared points_selected array..."
             self.points_selected = []
 
+        elif key == Qt.Key_U:   # INCREASE SCALING FACTOR 
+            print "... scalling imaging UP ..."
+            self.points_pyramids*=2.
+                
+        elif key == Qt.Key_D:   # INCREASE SCALING FACTOR 
+            print "... scalling imaging UP ..."
+            self.points_pyramids*=.5
 
         elif key == Qt.Key_E:   # CLEAR point from display array
             print "... black out points from display ..."
@@ -820,6 +828,9 @@ class GLWidget(QtOpenGL.QGLWidget):
             print self.points_pyramids.shape, self.colours_pyramids.shape
             
             self.parent.parent.saved_indexes = np.int32(self.points_selected)
+            
+            #all_pts = np.arange(self.npoints)
+            #self.parent.parent.saved_indexes = np.int32(np.delete(all_pts, self.points_selected))
             self.parent.parent.loop_condition = True
             self.parent.close()
             
@@ -844,6 +855,8 @@ class GLWidget(QtOpenGL.QGLWidget):
             
         elif key == Qt.Key_X:   # Remove points in points_selected buffer from data and recompute PCA
             self.parent.parent.loop_condition = False
+            #all_pts = np.arange(self.npoints)               #**************THESE TWO LINES ARE REDUNDANT
+            #self.parent.parent.saved_indexes = all_pts
             self.parent.close()
             
             
@@ -903,7 +916,7 @@ class GLWidget(QtOpenGL.QGLWidget):
         #    sw.nlist.clearSelection()
         x, y = self.cursorPosGL()
         sids = self.pick(x, y, pb=10, multiple=True)
-        if sids == None:
+        if sids.all() == None:
             return
         #t0 = time.time()
         #if not sw.panel.maxed_out:
@@ -917,7 +930,7 @@ class GLWidget(QtOpenGL.QGLWidget):
             sat = 0.2 # desaturate
         else: # self.selecting == False
             sat = 1 # resaturate
-        self.colour(sids, sat=sat)
+        self.colour_set(sids, sat=sat)
         self.updateGL()
 
     def showProjectionDialog(self):
@@ -951,7 +964,7 @@ def plot_3D(self):
 
     #Start window
     self.glwindow = ClusterWindow(self)
-    self.saved_indexes
+    #self.saved_indexes
     self.glwindow.show()
     self.glwindow.glWidget.points_selected=[]    #Empty list to gather all selected points.
     self.glwindow.glWidget.movie_array = self.movie_array 

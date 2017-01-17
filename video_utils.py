@@ -11,6 +11,136 @@ COLORS=['blue','green','violet','lightseagreen','lightsalmon','dodgerblue','medi
 
 
 
+def cluster_data(cluster_data, cluster_method):
+    
+    colours = ['blue','red','green','black','orange','magenta','cyan','yellow','brown','pink','blue','red','green','black','orange','magenta','cyan','yellow','brown','pink','blue','red','green','black','orange','magenta','cyan','yellow','brown','pink']
+    
+    #cluster_method=2
+    
+    #KMEANS
+    if cluster_method == 0: 
+        n_clusters = 4
+        clusters = cluster.KMeans(n_clusters, max_iter=1000, n_jobs=-1, random_state=1032)
+        clusters.fit(cluster_data)
+
+        labels = clusters.labels_
+
+    #MEAN SHIFT
+    if cluster_method == 1: 
+        from sklearn.cluster import MeanShift, estimate_bandwidth
+        from sklearn.datasets.samples_generator import make_blobs
+        
+        quantile = 0.1
+        bandwidth = estimate_bandwidth(cluster_data, quantile=quantile, n_samples=5000)
+
+        ms = MeanShift(bandwidth=bandwidth, bin_seeding=True)
+        ms.fit(cluster_data)
+        labels = ms.labels_
+        #print labels
+
+    #DBSCAN
+    if cluster_method == 2: 
+        from sklearn.cluster import DBSCAN
+        from sklearn import metrics
+        from sklearn.datasets.samples_generator import make_blobs
+        from sklearn.preprocessing import StandardScaler 
+
+        X = StandardScaler().fit_transform(cluster_data)
+
+        eps = 0.2
+        
+        db = DBSCAN(eps=eps, min_samples=10).fit(X)
+        core_samples_mask = np.zeros_like(db.labels_, dtype=bool)
+        core_samples_mask[db.core_sample_indices_] = True
+        labels = db.labels_ 
+
+    #MANUAL
+    if cluster_method == 3: 
+        manual_cluster(cluster_data)
+        
+        
+    labels = np.array(labels)
+    clrs = []
+    for k in range(len(labels)):
+        clrs.append(colours[labels[k]])
+    plt.scatter(cluster_data[:,0], cluster_data[:,1], color=clrs)
+    plt.show()
+        
+#***************************************************************************************
+def manual_cluster(data):
+
+    global coords, data_temp, ax, fig, cid
+    
+    data_temp = data
+    
+    fig, ax = plt.subplots()
+    
+    coords=[]
+    #ax.imshow(images_processed)#, vmin=0.0, vmax=0.02)
+    ax.scatter(data[:,0],data[:,1])
+    ax.set_title("Compute generic (outside the brain) mask")
+    #figManager = plt.get_current_fig_manager()
+    #figManager.window.showMaximized()
+    cid = fig.canvas.mpl_connect('button_press_event', on_click_single_frame)
+    plt.show()
+
+    return
+
+    #******* MASK AND DISPLAY AREAS OUTSIDE GENERAL MASK 
+    #Search points outside and black them out:
+    all_points = []
+    for i in range(len(images_processed)):
+        for j in range(len(images_processed)):
+            all_points.append([i,j])
+
+    all_points = np.array(all_points)
+    vertixes = np.array(coords) 
+    vertixes_path = Path(vertixes)
+    
+    mask = vertixes_path.contains_points(all_points)
+    counter=0
+    coords_save=[]
+    for i in range(len(images_processed)):
+        for j in range(len(images_processed)):
+            if mask[counter] == False:
+                images_processed[i][j]=0
+                coords_save.append([i,j])
+            counter+=1
+
+    fig, ax = plt.subplots()
+    ax.imshow(images_processed)
+    plt.show()
+   
+    genericmask_file = animal.home_dir+animal.name + '/genericmask.txt'
+    np.savetxt(genericmask_file, coords_save)
+
+    print "Finished Making General Mask"
+
+
+#*************************************************************
+def on_click_single_frame(event):
+    global coords, data_temp, ax, fig, cid
+    
+    #n_pix = len(images_temp)
+    
+    print event.inaxes
+    
+    if event.inaxes is not None:
+        coords.append([event.ydata, event.xdata])
+        #for j in range(len(coords)):
+        #    for k in range(3):
+        #        for l in range(3):
+        #            images_temp[min(n_pix,int(coords[j][0])-1+k)][min(n_pix,int(coords[j][1])-1+l)]=0
+
+        #ax.imshow(images_temp)
+        print coords
+        ax.scatter(data_temp[:,0],data_temp[:,1])
+        ax.scatter(coords[0][0], coords[0][1], color='red', s=50)
+        fig.canvas.draw()
+    else:
+        print 'Exiting'
+        plt.close()
+        fig.canvas.mpl_disconnect(cid)
 def Crop_frame(image, filename, area):
 
     global coords, image_temp, ax, fig, cid, img_height, img_width
@@ -228,42 +358,64 @@ def PCA_reduction(X, n_components):
         
     
     
-def plot_PCA(X, filtering): 
+def filter_PCA(X, filtering, plotting): 
     from scipy import signal
 
     #filtering = False
     #Filter PCA DATA
-    t = np.linspace(0,len(X[:,0]), len(X[:,0]))/15.
-    ax = plt.subplot(3,1,1)
-    print len(t), len(X[:,0])
-    plt.plot(t, X[:,0])
-    plt.title("PCA #1", fontsize = 30)
+    if plotting: 
+        t = np.linspace(0,len(X[:,0]), len(X[:,0]))/15.
+        ax = plt.subplot(3,1,1)
+        print len(t), len(X[:,0])
+        plt.plot(t, X[:,0])
+        plt.title("PCA #1", fontsize = 30)
 
     x = np.hstack(X[:,0])
-    b, a = signal.butter(2, 0.001, 'high')
-    y = signal.filtfilt(b, a, x)
-    if filtering: X[:,0]=y
-    plt.plot(t, y, color='red')
+    b, a = signal.butter(2, 0.001, 'high') #Implement 2Hz highpass filter
+    if filtering: 
+        y = signal.filtfilt(b, a, x)
+        X[:,0]=y
+    
+        if plotting: 
+            plt.plot(t, y, color='red')
 
-    ax = plt.subplot(3,1,2)
-    plt.plot(t, X[:,1])
-    plt.title("PCA #2", fontsize = 30)
+    #*******************
+    if plotting: 
+        ax = plt.subplot(3,1,2)
+        plt.plot(t, X[:,1])
+        plt.title("PCA #2", fontsize = 30)
+
     x = np.hstack(X[:,1])
-    #b, a = signal.butter(4, 0.1, 'high')
-    y = signal.filtfilt(b, a, x)
-    plt.plot(t, y, color='red')
-    #if filtering: X[:,1]=y
 
-    ax = plt.subplot(3,1,3)
-    plt.plot(t, X[:,2])
-    plt.title("PCA #3", fontsize = 30)
+    if filtering: 
+        y = signal.filtfilt(b, a, x)
+        X[:,1]=y
+
+        if plotting:
+            plt.plot(t, y, color='red')
+    
+
+    #******************
+    if plotting:
+        ax = plt.subplot(3,1,3)
+        plt.plot(t, X[:,2])
+        plt.title("PCA #3", fontsize = 30)
+
     x = np.hstack(X[:,2])
-    #b, a = signal.butter(4, 0.1, 'high')
-    y = signal.filtfilt(b, a, x)
-    plt.plot(t, y, color='red')
-    #if filtering: X[:,2]=y
-    #plt.show()
+    if filtering: 
+        y = signal.filtfilt(b, a, x)
+        X[:,2]=y
+    
+        if plotting:
+            plt.plot(t, y, color='red')
+        
+    if plotting:
+        plt.show()
+        
+    
     plt.close()
+    
+    
     return X 
     
     
