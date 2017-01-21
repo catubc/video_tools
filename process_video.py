@@ -33,7 +33,11 @@ filename = '/media/cat/12TB/in_vivo/tim/yuki/IA1/video_files/IA1am_May10_Week5_3
 
 #filename = '/media/cat/All.Data.3TB/in_vivo/tim/yuki/IA2/video_files/IA2pm_Apr21_Week2_30Hz.m4v'
 
-areas = ['_lever', '_pawlever', '_lick', '_snout', '_rightpaw', '_leftpaw', '_grooming'] 
+
+path_dir, fname = os.path.split(filename)
+fname = fname[:-4]
+
+areas = ['lever', 'lick', 'snout', 'rightpaw', 'leftpaw', 'grooming'] 
 
 
 #************************************************************************************************
@@ -57,14 +61,16 @@ image_original_gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
 #plt.imshow(img_arctan)
 #plt.show()
 
+pathname = path_dir.replace("video_files", "tif_files/")+fname+"/"
 
 for area in areas:
-    if os.path.exists(filename[:-4]+area+'_crop.npy'): continue
+    if os.path.exists(pathname+area+'_crop.npy'): continue
 
     #Crop_frame(image_original, filename, area)         #DEFINE IRREGULAR CROPPING AREAS
     coords_out = Crop_frame_box(image_original, filename, area)      #DEFINE BOX AREAS FOR CROPPING
     
-    np.save(filename[:-4]+area+'_crop', coords_out)
+    np.save(pathname+area+'_crop', coords_out)
+    
     print coords_out
     print "Finished Saving Cropped Pixels"
 
@@ -72,11 +78,12 @@ for area in areas:
 #************************************************************************************************
 #************************************* LOAD CROPPED IMAGE STACK *********************************
 #************************************************************************************************
-areas = ['_lever'] 
-#areas = ['_lick'] 
+#areas = ['lever'] 
+#areas = ['lick'] 
+areas = ['lever']
 
 for area in areas: 
-    if os.path.exists(filename[:-4]+area+'_2D.npy')==False:
+    if os.path.exists(pathname+area+'_2D.npy')==False:
         
         
         #Reload data from scratch
@@ -105,7 +112,7 @@ for area in areas:
 
         #Box cropping tools
         
-        crop_box = np.load(filename[:-4]+area+'_crop.npy')
+        crop_box = np.load(pathname+area+'_crop.npy')
         print crop_box
         
         data_1D_array = []
@@ -159,6 +166,7 @@ for area in areas:
             
             #I don't understand this anymore                    
             rLow = 0 #cv2.getTrackbarPos('R-low', 'images')
+            #rHigh = 100 #cv2.getTrackbarPos('R-high', 'images')
             rHigh = 100 #cv2.getTrackbarPos('R-high', 'images')
             lower = np.array([rLow, rLow, rLow], dtype = "uint8")
             upper = np.array([rHigh, rHigh, rHigh], dtype = "uint8")     
@@ -170,7 +178,7 @@ for area in areas:
             #skinMask = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
            
             kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-            skinMask = cv2.erode(skinMask, kernel, iterations = 1)
+            skinMask = cv2.erode(skinMask, kernel, iterations = 1)  #1
             skinMask = cv2.dilate(skinMask, kernel, iterations = 2)
 
             # blur the mask to help remove noise, then apply the
@@ -179,7 +187,7 @@ for area in areas:
             #skinMask = cv2.bitwise_and(frame, frame, mask = skinMask)
 
             #cv2.imshow('Test', skinMask)
-            #cv2.waitKey(10)
+            #cv2.waitKey(2)
             
             #data_2D_array.append(cv2.cvtColor(skinMask, cv2.COLOR_GRAY2BGR))
             data_2D_array.append(skinMask)
@@ -191,40 +199,41 @@ for area in areas:
             #if frame_count==1000: break
             
 
-        np.save(filename[:-4]+area+'_2D', data_2D_array)
+        np.save(pathname+area+'_2D' , data_2D_array)
         
-        if os.path.exists(filename[:-4]+area+'_movie.npy')==False:
+        if os.path.exists(pathname+area+'_movie.npy')==False:
             print "...saving area movie file..."
-            np.save(filename[:-4]+area+'_movie', movie_array)
+            np.save(pathname+area+'_movie', movie_array)
         
-        if os.path.exists(filename[:-4]+'_movie.npy')==False:
+        if os.path.exists(pathname+'movie.npy')==False:
             print "...saving whole move file to .npy ..."
             
-            np.save(filename[:-4]+'_movie', original_movie_array)
+            np.save(pathname+"movie", original_movie_array)
         
         data_2D_array = np.array(data_2D_array)
     else:
         print "... loading cropped data from disk ..."
         
-        data_2D_array = np.load(filename[:-4]+area+'_2D.npy')
-        movie_array = np.load(filename[:-4]+area+'_movie.npy', mmap_mode='r+')
+        data_2D_array = np.load(pathname+area+'_2D.npy')
+        movie_array = np.load(pathname+area+'_movie.npy', mmap_mode='c')
 
 
 print data_2D_array.shape
 
 
 #******************** SUBSAMPLING ***********************
-if os.path.exists(filename[:-4]+area+'_subsampled.npy')==False:
+
+if os.path.exists(pathname+area+'_subsampled.npy')==False:
     subsampled_array = []
     print "... subsampling ..."    
     for k in range(len(data_2D_array)):
         subsampled_array.append(scipy.misc.imresize(data_2D_array[k], 0.2, interp='bilinear', mode=None))
 
     data_2D_array = np.array(subsampled_array)
-    np.save(filename[:-4]+area+'_subsampled', data_2D_array)
+    np.save(pathname+area+'_subsampled', data_2D_array)
 
 else:
-    data_2D_array = np.load(filename[:-4]+area+'_subsampled.npy')
+    data_2D_array = np.load(pathname+area+'_subsampled.npy')
 
 print data_2D_array.shape
 
@@ -239,7 +248,7 @@ X = []
 for k in range(len(data_2D_array)):
     X.append(np.ravel(data_2D_array[k]))
 
-X = dimension_reduction(X, method, filename, area)
+X = dimension_reduction(X, method, pathname, area)
 
 
 #****************** FILTER OUT SLOW COMPONENTS OUT OF DATA *******************
@@ -264,11 +273,11 @@ if plotting_3D:
     loop_condition = True
     
     #Load original movies and increase boundaries 
-    crop_box = np.load(filename[:-4]+area+'_crop.npy')
+    crop_box = np.load(pathname+area+'_crop.npy')
     enlarge = 25
     for k in range(2): 
         crop_box[k][0] = max(0,crop_box[k][0]-enlarge); crop_box[k][1] = min(crop_box[k][1]+enlarge, image_original.shape[k])
-    movie_array = np.load(filename[:-4]+'_movie.npy', mmap_mode='r+')[:, crop_box[0][0]:crop_box[0][1], crop_box[1][0]:crop_box[1][1]]
+    movie_array = np.load(pathname+'movie.npy', mmap_mode='c')[:, crop_box[0][0]:crop_box[0][1], crop_box[1][0]:crop_box[1][1]]
     #movie_array = np.load(filename[:-4]+area+'_movie.npy', mmap_mode='r+')
     
     #Load PCA locations;
@@ -337,11 +346,11 @@ for k in range(len(cumulative_indexes)):
 
 
 #Load original movies and increase boundaries 
-crop_box = np.load(filename[:-4]+area+'_crop.npy')
+crop_box = np.load(pathname+area+'_crop.npy')
 enlarge = 10
 for k in range(2): 
     crop_box[k][0] = max(0,crop_box[k][0]-enlarge); crop_box[k][1] = min(crop_box[k][1]+enlarge, image_original.shape[k])
-movie_array = np.load(filename[:-4]+'_movie.npy', mmap_mode='c')[:, crop_box[0][0]:crop_box[0][1], crop_box[1][0]:crop_box[1][1]]
+movie_array = np.load(pathname+'movie.npy', mmap_mode='c')[:, crop_box[0][0]:crop_box[0][1], crop_box[1][0]:crop_box[1][1]]
    
 #Compute membership in each cluster and save examples to file:
 cluster_ids = []
@@ -361,7 +370,7 @@ for k in range(len(cumulative_indexes)):
     plt.suptitle("Cluster: " + str(k+1) + "/" + str(len(cumulative_indexes))+"  # frames: "+str(len(cumulative_indexes[k])), fontsize = 10)
     plt.tight_layout()  
     
-    plt.savefig(filename[:-4]+'_'+area+'_cluster_'+str(k))   # save the figure to file
+    plt.savefig(pathname+area+'_cluster_'+str(k))   # save the figure to file
     plt.close() 
 
 
@@ -409,7 +418,7 @@ for k in range(len(cluster_ids)):
     print len(cluster_ids[k])
     print cluster_ids[k][:20]
     
-np.savez(filename[:-4]+area+'_clusters.npz', cluster_indexes=cluster_ids, cluster_names=cluster_names)
+np.savez(pathname+area+'_clusters.npz', cluster_indexes=cluster_ids, cluster_names=cluster_names)
 
 
 

@@ -278,7 +278,7 @@ def dimension_reduction(data, method, filename, area):
     if method==methods[0]:
         #MDS Method - SMACOF implementation Nelle Varoquaux
         
-        if os.path.exists(filename[:-4]+area+'_'+method+'.npy')==False:
+        if os.path.exists(filename+area+'_'+method+'.npy')==False:
             
             print "... MDS-SMACOF..."
             print "... pairwise dist ..."
@@ -292,10 +292,10 @@ def dimension_reduction(data, method, filename, area):
             results = mds_clf.fit(adist)
             Y = results.embedding_         
          
-            np.save(filename[:-4]+area+'_'+method, Y)
+            np.save(filename+area+'_'+method, Y)
         
         else:
-            Y = np.load(filename[:-4]+area+'_'+method+'.npy')
+            Y = np.load(filename+area+'_'+method+'.npy')
 
 
     elif method==methods[1]:
@@ -317,18 +317,18 @@ def dimension_reduction(data, method, filename, area):
             Y = model.fit_transform(adist)
             #Y = model.fit(adist)
         
-            np.save(filename[:-4]+area+'_'+method, Y)
+            np.save(filename+area+'_'+method, Y)
         
         else:
-            Y = np.load(filename[:-4]+area+'_'+method+'.npy')
+            Y = np.load(filename+area+'_'+method+'.npy')
 
     elif method==methods[2]:
 
-        if os.path.exists(filename[:-4]+area+'_'+method+'.npy')==False:
+        if os.path.exists(filename+area+'_'+method+'.npy')==False:
             Y = PCA_reduction(matrix_in, 3)
-            np.save(filename[:-4]+area+'_'+method, Y)
+            np.save(filename+area+'_'+method, Y)
         else:
-            Y = np.load(filename[:-4]+area+'_'+method+'.npy')
+            Y = np.load(filename+area+'_'+method+'.npy')
 
                 
     #elif method==methods[3]:
